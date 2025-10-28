@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess Game - Enhanced Contrast Pieces</title>
+    <title>Chess Game with Castling</title>
     <style>
         * {
             margin: 0;
@@ -253,7 +253,7 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
         }
         
-        /* White Pieces - Enhanced Ivory/Gold Texture with Black Centers */
+        /* White Pieces - Enhanced Ivory/Gold Texture */
         .white-piece {
             background: linear-gradient(145deg, #fff9f0, #f0e6d6);
             border: 1px solid #e0d0b0;
@@ -263,7 +263,7 @@
             filter: brightness(1.1) contrast(1.2);
         }
         
-        /* Black Pieces - Ebony/Silver Texture with White Centers */
+        /* Black Pieces - Ebony/Silver Texture */
         .black-piece {
             background: linear-gradient(145deg, #2c2c2c, #1a1a1a);
             border: 1px solid #444;
@@ -783,7 +783,7 @@
     </style>
 </head>
 <body>
-    <h1>Chess Game - Enhanced Contrast Pieces</h1>
+    <h1>Chess Game with Castling</h1>
     
     <div class="game-container">
         <div class="board-container">
@@ -859,12 +859,13 @@
     <div class="rules">
         <h2>Chess Rules</h2>
         <ul>
-            <li><strong>King:</strong> Moves one square in any direction. Game ends when a king is captured.</li>
+            <li><strong>King:</strong> Moves one square in any direction. Can castle with rook.</li>
             <li><strong>Queen:</strong> Moves any number of squares diagonally, horizontally, or vertically.</li>
             <li><strong>Rook:</strong> Moves any number of squares horizontally or vertically.</li>
             <li><strong>Bishop:</strong> Moves any number of squares diagonally.</li>
             <li><strong>Knight:</strong> Moves in an L-shape: two squares in one direction and then one square perpendicular.</li>
             <li><strong>Pawn:</strong> Moves forward one square, but captures diagonally. On first move, can move two squares.</li>
+            <li><strong>Castling:</strong> King moves two squares toward rook, rook moves to other side of king.</li>
             <li><strong>Pawn Promotion:</strong> When a pawn reaches the opposite side, it can be promoted to Queen, Rook, Bishop, or Knight.</li>
             <li><strong>Check:</strong> When a king is under immediate attack.</li>
             <li><strong>Checkmate:</strong> When a king is in check and there is no legal move to escape.</li>
@@ -872,8 +873,6 @@
     </div>
 
     <script>
-        // The JavaScript code remains exactly the same as in the previous version
-        // Only the CSS has been modified to add white centers to black pieces
         document.addEventListener('DOMContentLoaded', () => {
             const board = document.getElementById('chessboard');
             const status = document.getElementById('status');
@@ -924,12 +923,16 @@
                         
                         // Add pieces to starting positions
                         let piece = null;
-                        if (row === 1) piece = { type: 'pawn', color: 'black' };
-                        if (row === 6) piece = { type: 'pawn', color: 'white' };
+                        if (row === 1) piece = { type: 'pawn', color: 'black', hasMoved: false };
+                        if (row === 6) piece = { type: 'pawn', color: 'white', hasMoved: false };
                         
                         if (row === 0 || row === 7) {
                             const pieceTypes = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
-                            piece = { type: pieceTypes[col], color: row === 0 ? 'black' : 'white' };
+                            piece = { 
+                                type: pieceTypes[col], 
+                                color: row === 0 ? 'black' : 'white',
+                                hasMoved: false
+                            };
                         }
                         
                         if (piece) {
@@ -1088,11 +1091,57 @@
                 toSquare.innerHTML = '';
                 toSquare.appendChild(fromSquare.firstChild);
                 
+                // Handle castling
+                if (piece.type === 'king' && Math.abs(fromCol - toCol) === 2) {
+                    // Kingside castling
+                    if (toCol === 6) {
+                        const rookFromCol = 7;
+                        const rookToCol = 5;
+                        const rookSquare = document.querySelector(`.square[data-row="${fromRow}"][data-col="${rookFromCol}"]`);
+                        const rookTargetSquare = document.querySelector(`.square[data-row="${fromRow}"][data-col="${rookToCol}"]`);
+                        
+                        // Move rook
+                        gameState[fromRow][rookToCol] = gameState[fromRow][rookFromCol];
+                        gameState[fromRow][rookFromCol] = null;
+                        rookTargetSquare.innerHTML = '';
+                        rookTargetSquare.appendChild(rookSquare.firstChild);
+                        
+                        // Mark rook as moved
+                        gameState[fromRow][rookToCol].hasMoved = true;
+                    }
+                    // Queenside castling
+                    else if (toCol === 2) {
+                        const rookFromCol = 0;
+                        const rookToCol = 3;
+                        const rookSquare = document.querySelector(`.square[data-row="${fromRow}"][data-col="${rookFromCol}"]`);
+                        const rookTargetSquare = document.querySelector(`.square[data-row="${fromRow}"][data-col="${rookToCol}"]`);
+                        
+                        // Move rook
+                        gameState[fromRow][rookToCol] = gameState[fromRow][rookFromCol];
+                        gameState[fromRow][rookFromCol] = null;
+                        rookTargetSquare.innerHTML = '';
+                        rookTargetSquare.appendChild(rookSquare.firstChild);
+                        
+                        // Mark rook as moved
+                        gameState[fromRow][rookToCol].hasMoved = true;
+                    }
+                }
+                
+                // Mark piece as moved
+                gameState[toRow][toCol].hasMoved = true;
+                
                 // Record move
                 const fromNotation = `${String.fromCharCode(97 + fromCol)}${8 - fromRow}`;
                 const toNotation = `${String.fromCharCode(97 + toCol)}${8 - toRow}`;
                 const moveNumber = Math.ceil(moveHistory.length / 2) + 1;
-                const moveText = `${fromNotation} → ${toNotation}`;
+                
+                // Add castling notation
+                let moveText;
+                if (piece.type === 'king' && Math.abs(fromCol - toCol) === 2) {
+                    moveText = toCol === 6 ? 'O-O' : 'O-O-O'; // Kingside or Queenside castling
+                } else {
+                    moveText = `${fromNotation} → ${toNotation}`;
+                }
                 
                 if (currentPlayer === 'white') {
                     const moveElement = document.createElement('div');
@@ -1166,7 +1215,11 @@
                     const selectedPieceType = piece.dataset.piece;
                     
                     // Update the pawn to the selected piece
-                    gameState[row][col] = { type: selectedPieceType, color: color };
+                    gameState[row][col] = { 
+                        type: selectedPieceType, 
+                        color: color,
+                        hasMoved: true
+                    };
                     
                     // Update the DOM
                     const square = document.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
@@ -1225,7 +1278,7 @@
                     case 'queen':
                         return isValidQueenMove(fromRow, fromCol, toRow, toCol);
                     case 'king':
-                        return isValidKingMove(fromRow, fromCol, toRow, toCol);
+                        return isValidKingMove(fromRow, fromCol, toRow, toCol, piece.color);
                     default:
                         return false;
                 }
@@ -1320,13 +1373,62 @@
                        isValidBishopMove(fromRow, fromCol, toRow, toCol);
             }
             
-            // King movement validation
-            function isValidKingMove(fromRow, fromCol, toRow, toCol) {
-                // King can move one square in any direction
-                const rowDiff = Math.abs(fromRow - toRow);
-                const colDiff = Math.abs(fromCol - toCol);
+            // King movement validation with castling
+            function isValidKingMove(fromRow, fromCol, toRow, toCol, color) {
+                // Normal king move (one square)
+                if (Math.abs(fromRow - toRow) <= 1 && Math.abs(fromCol - toCol) <= 1) {
+                    return true;
+                }
                 
-                return rowDiff <= 1 && colDiff <= 1;
+                // Castling move
+                if (fromRow === toRow && Math.abs(fromCol - toCol) === 2 && 
+                    !gameState[fromRow][fromCol].hasMoved && 
+                    fromRow === (color === 'white' ? 7 : 0)) {
+                    
+                    // Kingside castling
+                    if (toCol === 6) {
+                        const rookCol = 7;
+                        const rook = gameState[fromRow][rookCol];
+                        if (rook && rook.type === 'rook' && rook.color === color && 
+                            !rook.hasMoved && 
+                            !gameState[fromRow][5] && !gameState[fromRow][6] &&
+                            !isInCheck(color) &&
+                            !wouldBeInCheck(color, fromRow, fromCol, fromRow, 5)) {
+                            return true;
+                        }
+                    }
+                    // Queenside castling
+                    else if (toCol === 2) {
+                        const rookCol = 0;
+                        const rook = gameState[fromRow][rookCol];
+                        if (rook && rook.type === 'rook' && rook.color === color && 
+                            !rook.hasMoved && 
+                            !gameState[fromRow][1] && !gameState[fromRow][2] && !gameState[fromRow][3] &&
+                            !isInCheck(color) &&
+                            !wouldBeInCheck(color, fromRow, fromCol, fromRow, 3)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+            
+            // Check if king would be in check after move
+            function wouldBeInCheck(color, fromRow, fromCol, toRow, toCol) {
+                const originalPiece = gameState[toRow][toCol];
+                const movingPiece = gameState[fromRow][fromCol];
+                
+                // Temporarily make the move
+                gameState[toRow][toCol] = movingPiece;
+                gameState[fromRow][fromCol] = null;
+                
+                const inCheck = isInCheck(color);
+                
+                // Undo the move
+                gameState[fromRow][fromCol] = movingPiece;
+                gameState[toRow][toCol] = originalPiece;
+                
+                return inCheck;
             }
             
             // Highlight valid moves for a piece
@@ -1526,7 +1628,7 @@
                     ((movedPiece.color === 'white' && toRow === 0) || 
                      (movedPiece.color === 'black' && toRow === 7))) {
                     // AI always promotes to queen
-                    gameState[toRow][toCol] = { type: 'queen', color: movedPiece.color };
+                    gameState[toRow][toCol] = { type: 'queen', color: movedPiece.color, hasMoved: true };
                     const square = document.querySelector(`.square[data-row="${toRow}"][data-col="${toCol}"]`);
                     square.innerHTML = '';
                     square.appendChild(createPieceElement('queen', movedPiece.color));
